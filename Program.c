@@ -1,17 +1,17 @@
 #include "NXT_FileIO.c"
 
-struct Skittle{
+struct Skittle{	// a struct used to
 	int normal;
 	int R;
 	int G;
 	int B;
 }
 
-struct A2D{
+struct A2D{		// a sturct used to create and pass 2D arrays throughout the rest of the program
 	int array[5][4];
 }
 
-struct A1D{
+struct A1D{		// a struct used to create and pass 1D arrays throughout the rest of the program
 	int array[4];
 }
 
@@ -31,14 +31,64 @@ task doit(){
 void config(Skittle returnSkittle){
 
 	A2D raw;
-	for(int i = 0; i < 4; i++){
+	TFileHandle fout;
+	bool fileOkay = openWritePC(fout, "CONFIG.txt", 1000); // opening the file, so that the full config can go through, thus never having a blank config
+	for(int k = 0; k < 5; k++){
+		int maxR = 0, maxG = 0, maxB = 0, minR = 0, minG = 0, minB = 0, maxNormal = 0; // values to be put into the config file.
+		int normals[5] = {0, 0, 0, 0, 0}; // int for each possible colour
+
+		for(int i = 0; i < 5; i++){ // test a skittle colour and record its RGB values.
+			homeMotorC();
+			moveAndScan(returnSkittle, false);
+			if(maxR < returnSkittle.R) maxR = returnSkittle.R;
+			if(maxG < returnSkittle.R) maxG = returnSkittle.G;
+			if(maxB < returnSkittle.R) maxB = returnSkittle.B;
+
+			if(minR == 0) minR = maxR;
+			if(minG == 0) minG = maxG;
+			if(minB == 0) minB = maxB;
+
+			if(minR > returnSkittle.R) minR = returnSkittle.R;
+			if(minG > returnSkittle.G) minG = returnSkittle.G;
+			if(minB > returnSkittle.B) minR = returnSkittle.B;
+
+
+			for(int j = 0; j < 5; j++){
+				if(normals[j] == returnSkittle.normal){
+					j = 5;
+				}
+				else if(normals[j] == 0){
+					normals[j] = returnSkittle.normal;
+					j = 5;
+				}
+
+			}
+
+		}
+
+		writeLongPC(fout, maxR);
+		writeTextPC(fout, " ");
+		writeLongPC(fout, maxG);
+		writeTextPC(fout, " ");
+		writeLongPC(fout, maxG);
+		writeTextPC(fout, " ");
+		writeLongPC(fout, minR);
+		writeTextPC(fout, " ");
+		writeLongPC(fout, minG);
+		writeTextPC(fout, " ");
+		writeLongPC(fout, minB);
+		writeTextPC(fout, " ");
+		writeLongPC(fout, maxNormal);
+		writeTextPC(fout, " ");
+		for(int i = 0; i < maxNormal; i++){
+			writeLongPC(fout, normals[i]);
+			writeTextPC(fout, " ");
+		}
+		writeEndlPC(fout);
 		homeMotorC();
-		moveAndScan(returnSkittle, false);
-		raw.array[i][0] = returnSkittle.normal;
-		raw.array[i][1] = returnSkittle.R;
-		raw.array[i][2] = returnSkittle.G;
-		raw.array[i][3] = returnSkittle.B;
+		wait1Msec(1000);
 	}
+
 
 }
 
@@ -164,10 +214,11 @@ void displayStatus(){
 
 task main()
 {
-	SensorType[S1] = sensorTouch;
+	SensorType[S1] = sensorTouch; // declare each sensor
 	SensorType[S2] = sensorTouch;
 	SensorType[S3] = sensorColorNxtFULL;
-	homeMotorB();
+	homeMotorB();		// home each motor before doing anything ese
+	homeMotorC();
 
 
 	//displayStatus();
