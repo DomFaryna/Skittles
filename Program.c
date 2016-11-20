@@ -1,8 +1,5 @@
 #include "NXT_FileIO.c"
 
-void homeMotorB();
-void moveMotorB(int toDist);
-
 struct Skittle{
 	int normal;
 	int R;
@@ -11,20 +8,66 @@ struct Skittle{
 }
 
 struct A2D{
-	int array[4][4];
+	int array[5][4];
 }
 
 struct A1D{
 	int array[4];
 }
+
+void homeMotorB();
+void homeMotorC();
+void moveAndScan();
+void moveMotorB(int toDist);
+void scanForColour(Skittle read);
+void spitSkittle(Skittle read);
+void moveAndScan(Skittle colour, bool sort);
+
+task doit(){
+	wait1Msec(200);
+	homeMotorB();
+}
+
 void config(Skittle returnSkittle){
 
-	int raw[4][3];
+	A2D raw;
 	for(int i = 0; i < 4; i++){
-		for(int j = 0; j < 3; j++){
-			raw[i][j] = 0;
+		homeMotorC();
+		moveAndScan(returnSkittle, false);
+		raw.array[i][0] = returnSkittle.normal;
+		raw.array[i][1] = returnSkittle.R;
+		raw.array[i][2] = returnSkittle.G;
+		raw.array[i][3] = returnSkittle.B;
+	}
+
+}
+
+void moveAndScan(Skittle colour, bool sort){
+	bool done = false;
+	nMotorEncoder[motorC] = 0;
+	int speed = 2;
+	motor[motorC] = speed;
+	while(!done){
+		if(nMotorEncoder[motorC] > 90){
+  		startTask(doit);
+  		done = true;
+ 	 	}
+
+ 	 	if(SensorValue[S3] != 6 && speed!=5){
+			wait1Msec(100);
+			if(SensorValue[S3] != 6) scanForColour(colour);
+	 		if(sort)spitSkittle(colour);
+			eraseDisplay();
+			displayString(0, "%i", colour.R);
+			displayString(1, "%i", colour.G);
+			displayString(2, "%i", colour.B);
+			displayString(3, "%i", colour.normal);
+			speed = 5;
+			motor[motorC] = speed;
+			wait1Msec(500);
 		}
 	}
+
 
 }
 
@@ -62,11 +105,6 @@ void spitSkittle(Skittle read){
 	}
 }
 
-task doit(){
-	wait1Msec(200);
-	homeMotorB();
-}
-
 void scanForColour(Skittle read){
 		wait10Msec(10);
 		motor[motorC] = 0;
@@ -100,82 +138,24 @@ void homeMotorB(){
 	motor[motorB] = 0;
 }
 
+void homeMotorC(){
+	motor[motorC] = -15;
+	while(SensorValue[S1] != 1);
+	motor[motorC] = 0;
+}
+
+
 
 void testMotorC(){
-	int go = -15;
 	Skittle colour;
 	while(1){
-	motor[motorC] = go;
-	if(SensorValue[S1] == 1){
-		go = 0;
-		nMotorEncoder[motorC] = 0;
-		motor[motorC] = go;
-		wait1Msec(1000);
-		go = 2;
-		motor[motorC] = go;
-		while(SensorValue[S1] == 1);
-	}
-	if(nMotorEncoder[motorC] > 90){
-		go = -20;
-		startTask(doit);
-	}
-
-	if(SensorValue[S3] != 6 && go > 0){
-		wait1Msec(100);
-		if(SensorValue[S3] != 6)	scanForColour(colour);
-		go = 5;
-
- 		spitSkittle(colour);
-		eraseDisplay();
-		displayString(0, "%i", colour.R);
-		displayString(1, "%i", colour.G);
-		displayString(2, "%i", colour.B);
-		displayString(3, "%i", colour.normal);
-
-		motor[motorC] = go;
-		wait1Msec(500);
-
-	}
-
-
+	homeMotorC();
+	moveAndScan(colour, true);
 
 	}
 
 }
 
-void testMotorB(){
-	int go = -15;
-	int pos[5];
-	int count = 0;
-	const int zero = 0;
-	for(int i = 0; i < 5; i++){
-	pos[i] = (i+1)*20;
-}
-
-	while(1){
-	motor[motorB] = go;
-	if(SensorValue[S2] == 1){
-		go = 0;
-		nMotorEncoder[motorB] = 0;
-		motor[motorB] = go;
-		wait1Msec(1000);
-		go = 15;
-		motor[motorB] = go;
-		wait1Msec(200);
-	}
-	if(nMotorEncoder[motorB] > pos[count]){
-		go = -15;
-		count++;
-		if(count == 5){ count = zero;}
-		wait1Msec(10);
-	}
-
-
-	displayString(0, "%i", count);
-
-	}
-
-}
 
 void displayStatus(){
 	while(1)
@@ -191,9 +171,10 @@ task main()
 
 
 	//displayStatus();
-	//config();
+	Skittle lol;
+	config(lol);
 
-	testMotorC();
+	//testMotorC();
 
 
 }
