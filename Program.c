@@ -8,7 +8,7 @@ struct Skittle{	// a struct used to
 }
 
 struct A2D{		// a sturct used to create and pass 2D arrays throughout the rest of the program
-	int array[5][4];
+	int array[5][10];
 }
 
 struct A1D{		// a struct used to create and pass 1D arrays throughout the rest of the program
@@ -19,14 +19,27 @@ void homeMotorB();
 void homeMotorC();
 void moveAndScan();
 void moveMotorB(int toDist);
-void scanForColour(Skittle read);
+bool scanForColour(Skittle read);
 void spitSkittle(Skittle read);
 void moveAndScan(Skittle colour, bool sort);
 
-task doit(){
+task doit(){	// seperate thread used to home the slide motor to save time.
 	wait1Msec(200);
 	homeMotorB();
 }
+
+
+void reset2DArray(A2D config){  // reset the 2D array to be populted with zeros.
+	for(int i = 0; i < 5; i++)
+	{
+		for(int j = 0; j < 10; j++)
+		{
+			config.array[i][j] = 0;
+		}
+
+	}
+}
+
 
 void config(Skittle returnSkittle){
 
@@ -50,7 +63,7 @@ void config(Skittle returnSkittle){
 
 			if(minR > returnSkittle.R) minR = returnSkittle.R;
 			if(minG > returnSkittle.G) minG = returnSkittle.G;
-			if(minB > returnSkittle.B) minR = returnSkittle.B;
+			if(minB > returnSkittle.B) minB = returnSkittle.B;
 
 
 			for(int j = 0; j < 5; j++){
@@ -59,6 +72,7 @@ void config(Skittle returnSkittle){
 				}
 				else if(normals[j] == 0){
 					normals[j] = returnSkittle.normal;
+					maxNormal++;
 					j = 5;
 				}
 
@@ -70,7 +84,7 @@ void config(Skittle returnSkittle){
 		writeTextPC(fout, " ");
 		writeLongPC(fout, maxG);
 		writeTextPC(fout, " ");
-		writeLongPC(fout, maxG);
+		writeLongPC(fout, maxB);
 		writeTextPC(fout, " ");
 		writeLongPC(fout, minR);
 		writeTextPC(fout, " ");
@@ -86,9 +100,24 @@ void config(Skittle returnSkittle){
 		}
 		writeEndlPC(fout);
 		homeMotorC();
-		wait1Msec(1000);
+		wait1Msec(2000);
 	}
 
+}
+
+void loadConfig(A2D loadTo) // load data from the config file and add it nto the 2D array
+{
+	TFileHandle fin;
+	bool okay = openReadPc(fin, "CONFIG.txt");
+
+	for(int i = 0; i < 5; i++)
+	{
+		for(int j = 0; j < 6; j++){
+			readIntPC(fin, loadTo.array[i][j]);
+		}
+
+
+	}
 
 }
 
@@ -103,18 +132,23 @@ void moveAndScan(Skittle colour, bool sort){
   		done = true;
  	 	}
 
- 	 	if(SensorValue[S3] != 6 && speed!=5){
+ 	 	if(SensorValue[S3] != 6){
 			wait1Msec(100);
-			if(SensorValue[S3] != 6) scanForColour(colour);
-	 		if(sort)spitSkittle(colour);
-			eraseDisplay();
-			displayString(0, "%i", colour.R);
-			displayString(1, "%i", colour.G);
-			displayString(2, "%i", colour.B);
-			displayString(3, "%i", colour.normal);
-			speed = 5;
-			motor[motorC] = speed;
-			wait1Msec(500);
+			if(SensorValue[S3] != 6) {
+				if(scanForColour(colour))
+					{
+			 		if(sort)spitSkittle(colour);
+					eraseDisplay();
+					displayString(0, "%i", colour.R);
+					displayString(1, "%i", colour.G);
+					displayString(2, "%i", colour.B);
+					displayString(3, "%i", colour.normal);
+					displayString(4, "%i", nMotorEncoder[motorC]);
+					speed = 2;
+					motor[motorC] = speed;
+					wait1Msec(1500);
+				}
+			}
 		}
 	}
 
@@ -155,24 +189,34 @@ void spitSkittle(Skittle read){
 	}
 }
 
-void scanForColour(Skittle read){
-		wait10Msec(10);
+bool scanForColour(Skittle read){
+		while(nMotorEncoder[motorC] <= 45);
 		motor[motorC] = 0;
-		SensorType[S3] = sensorColorNxtRED;
-		wait1Msec(1000);
-		read.R = SensorValue[S3];
+		wait1Msec(200);
+		if(sensorValue[S3] != 6){
+			SensorType[S3] = sensorColorNxtRED;
+			wait1Msec(1000);
+			read.R = SensorValue[S3];
 
-		SensorType[S3] = sensorColorNxtGREEN;
-		wait1Msec(1000);
-		read.G = SensorValue[S3];
-		SensorType[S3] = sensorColorNxtBLUE;
-		wait1Msec(1000);
-		read.B = SensorValue[S3];
+			SensorType[S3] = sensorColorNxtGREEN;
+			wait1Msec(1000);
+			read.G = SensorValue[S3];
+			SensorType[S3] = sensorColorNxtBLUE;
+			wait1Msec(1000);
+			read.B = SensorValue[S3];
 
-		SensorType[S3] = sensorColorNxtFULL;
-		wait1Msec(1000);
-		read.normal = SensorValue[S3];
+			SensorType[S3] = sensorColorNxtFULL;
+			wait1Msec(1000);
+			read.normal = SensorValue[S3];
 
+			return true;
+		}
+
+		else
+		{
+			motor[motorC] = 2;
+			return false;
+		}
 }
 
 void moveMotorB(int toDist){
@@ -206,20 +250,17 @@ void testMotorC(){
 
 }
 
-
-void displayStatus(){
-	while(1)
-	displayBigTextLine(0, "%i", SensorValue[S3]);
-}
-
 task main()
 {
+	A2D holdConfig;
 	SensorType[S1] = sensorTouch; // declare each sensor
 	SensorType[S2] = sensorTouch;
 	SensorType[S3] = sensorColorNxtFULL;
 	homeMotorB();		// home each motor before doing anything ese
 	homeMotorC();
+	reset2DArray(holdConfig);
 
+	wait1Msec(1000);
 
 	//displayStatus();
 	Skittle lol;
