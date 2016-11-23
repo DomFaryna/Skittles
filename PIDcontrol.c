@@ -1,7 +1,7 @@
 //PID controller
-#define Kp = 0.05;
-#define Ki = 0.0000000075;
-#define Kd = 0.04;
+const float Kp = 5;
+const float Ki = 0.000001;
+const float Kd = 75;
 
 //Calculates error to be used in PID control caluclations
 int errorCalc(int target, int degrees)
@@ -11,9 +11,13 @@ int errorCalc(int target, int degrees)
 }
 
 //Performs calculation for the output value to be applied to motors
-int PIDcontroller(int error, int integral, int derivative)
+float PIDcontroller(int error, int integral, int derivative)
 {
-	int output = Kp * (error + Ki) * (integral + Kd) * derivative;
+	float output = (Kp * error) + ( Ki * integral) + ( derivative* Kd); ;
+	displayString(0, "%f", error);
+	displayString(1, "%f", integral);
+	displayString(2, "%f", derivative);
+	//wait1Msec(2000);
 	return output;
 }
 
@@ -27,30 +31,36 @@ task main()
 	motor[motorA] = 75;
 
 	//Target motion is set to 500 degrees
-	int target = 500;
+	int target = 360;
 
 	/*--Initialization of variables needed for PID calculations--*/
 	//Motor A
-	int integralMotorA = 0;
+	float integralMotorA = 0;
 	int derivativeMotorA = 0;
 	int degMotorA = 0;
 	int prevErrorMotorA = 0;
 	int errorMotorA = 0;
-	int PIDmotorA = 0;
+	float PIDmotorA = 0;
+	float currentTime = 0;
 
 	time1[T1] = 0;
 
 	//while the robot is driving for under 20 sec, PID will be tested and applied
-	while(time1[T1] < 20000)
+	wait1Msec(20);
+	while(1)
 	{
-		//Motor A
 		degMotorA = nMotorEncoder[motorA];
-		errorMotorA = errorCalc(target, degMotorA);
 		prevErrorMotorA = errorMotorA;
-		integralMotorA = integralMotorA + errorMotorA;
+		errorMotorA = errorCalc(target, degMotorA);
+
+		integralMotorA += (errorMotorA) * (currentTime/time1[T1]);
+		currentTime = time1[T1];
 		derivativeMotorA = errorMotorA - prevErrorMotorA;
 		PIDmotorA = PIDcontroller(errorMotorA, integralMotorA, derivativeMotorA);
 		motor[motorA] = PIDmotorA;
-	}
+		displayString(4, "%f", PIDmotorA);
+		displayString(5, "%i", nMotorEncoder[motorA]);
 
+
+	}
 }
