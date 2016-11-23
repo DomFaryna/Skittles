@@ -16,6 +16,7 @@ struct A1D{		// a struct used to create and pass 1D arrays throughout the rest o
 	int array[4];
 }
 
+const int motorSpeed = 3;
 void homeMotorB();
 void homeMotorC();
 void moveMotorB(int toDist);
@@ -28,7 +29,17 @@ task doit(){	// seperate thread used to home the slide motor to save time.
 	homeMotorB();
 }
 
-
+task moveMotorA(){
+	while(1){
+		wait1Msec(100000);
+		motor[motorA] = 20;
+		wait1Msec(5000);
+		motor[motorA] = -20;
+		wait1Msec(5000);
+		motor[motorA] = 0;
+		wait1Msec(20000);
+	}
+}
 void reset2DArray(A2D reset){  // reset the 2D array to be populted with zeros.
 	for(int i = 0; i < 5; i++)
 	{
@@ -141,10 +152,9 @@ void loadConfig(A2D loadTo) // load data from the config file and add it to the 
 }
 
 void moveAndScan(Skittle colour, bool sort, A2D config){
-	bool done = false;
+	bool done = false, scanned = false, once = false;;
 	nMotorEncoder[motorC] = 0;
-	int speed = 2;
-	motor[motorC] = speed;
+	motor[motorC] = motorSpeed;
 	// keep on movig the skittle loader until the encoders have gotten far enough.
 	while(!done){
 		if(nMotorEncoder[motorC] > 90){
@@ -152,8 +162,13 @@ void moveAndScan(Skittle colour, bool sort, A2D config){
   		done = true;
  	 	}
 
- 	 	if(SensorValue[S3] != 6){
-			wait1Msec(100);
+ 	 	if(nMotorEncoder[motorC] >= 47 && !scanned){
+ 	 		if(nMotorEncoder[motorC] > 47 && !once){
+ 	 			motor[motorC] = -motorSpeed;
+ 	 			while(nMotorEncoder[motorC] > 35);
+ 	 			motor[motorC] = motorSpeed;
+ 	 			once = true;
+ 	 		}
 			if(SensorValue[S3] != 6) { // double check colour to remove false positivies
 				if(scanForColour(colour))
 					{
@@ -164,9 +179,8 @@ void moveAndScan(Skittle colour, bool sort, A2D config){
 					displayString(2, "%i", colour.B);
 					displayString(3, "%i", colour.normal);
 					displayString(4, "%i", colour.sum);
-					speed = 2;
-					motor[motorC] = speed;
-					wait1Msec(1500);
+					motor[motorC] = motorSpeed;
+					scanned = true;
 				}
 			}
 		}
@@ -209,23 +223,22 @@ void spitSkittle(Skittle read, A2D config){
 }
 
 bool scanForColour(Skittle read){
-		while(nMotorEncoder[motorC] <= 45);
 		motor[motorC] = 0;
 		wait1Msec(200);
 		if(SensorValue[S3] != 6){
 			SensorType[S3] = sensorColorNxtRED;
-			wait1Msec(1000);
+			wait1Msec(500);
 			read.R = SensorValue[S3];
 
 			SensorType[S3] = sensorColorNxtGREEN;
-			wait1Msec(1000);
+			wait1Msec(500);
 			read.G = SensorValue[S3];
 			SensorType[S3] = sensorColorNxtBLUE;
-			wait1Msec(1000);
+			wait1Msec(500);
 			read.B = SensorValue[S3];
 
 			SensorType[S3] = sensorColorNxtFULL;
-			wait1Msec(1000);
+			wait1Msec(500);
 			read.normal = SensorValue[S3];
 			read.sum = read.R + read.G + read.B;
 
@@ -234,7 +247,7 @@ bool scanForColour(Skittle read){
 
 		else
 		{
-			motor[motorC] = 2;
+			motor[motorC] = motorSpeed;
 			return false;
 		}
 }
@@ -269,6 +282,7 @@ task main()
 	reset2DArray(holdConfig);
 
 	wait1Msec(1000);
+	startTask(moveMotorA);
 
 	//displayStatus();
 	config();
