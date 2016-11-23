@@ -16,7 +16,7 @@ struct A1D{		// a struct used to create and pass 1D arrays throughout the rest o
 	int array[4];
 }
 
-const int motorSpeed = 3;
+const int motorSpeed = 2; // constant speed for motors
 void homeMotorB();
 void homeMotorC();
 void moveMotorB(int toDist);
@@ -31,13 +31,13 @@ task doit(){	// seperate thread used to home the slide motor to save time.
 
 task moveMotorA(){
 	while(1){
-		wait1Msec(100000);
+		wait1Msec(1000);
 		motor[motorA] = 20;
 		wait1Msec(5000);
 		motor[motorA] = -20;
 		wait1Msec(5000);
 		motor[motorA] = 0;
-		wait1Msec(20000);
+		wait1Msec(5000);
 	}
 }
 void reset2DArray(A2D reset){  // reset the 2D array to be populted with zeros.
@@ -53,7 +53,6 @@ void reset2DArray(A2D reset){  // reset the 2D array to be populted with zeros.
 void sort(A2D config)
 {
 	Skittle scan;
-
 }
 
 void config(){
@@ -94,9 +93,7 @@ void config(){
 					maxNormal++;
 					j = 5;
 				}
-
 			}
-
 		}
 		// Time to write the data to the text file.
 		writeLongPC(fout, maxR);
@@ -163,13 +160,18 @@ void moveAndScan(Skittle colour, bool sort, A2D config){
  	 	}
 
  	 	if(nMotorEncoder[motorC] >= 47 && !scanned){
+ 	 		if(once){
+ 	 			scanned = true;
+ 	 		}
+
  	 		if(nMotorEncoder[motorC] > 47 && !once){
  	 			motor[motorC] = -motorSpeed;
  	 			while(nMotorEncoder[motorC] > 35);
  	 			motor[motorC] = motorSpeed;
  	 			once = true;
  	 		}
-			if(SensorValue[S3] != 6) { // double check colour to remove false positivies
+
+			if(sensorValue[S3] != 6 && nMotorEncoder[motorC] < 58) { // double check colour to remove false positivies
 				if(scanForColour(colour))
 					{
 			 		if(sort)spitSkittle(colour, config);
@@ -182,6 +184,9 @@ void moveAndScan(Skittle colour, bool sort, A2D config){
 					motor[motorC] = motorSpeed;
 					scanned = true;
 				}
+			}
+			if(nMotorEncoder[motorC] >= 58 && once){
+				scanned = true;
 			}
 		}
 	}
@@ -223,6 +228,7 @@ void spitSkittle(Skittle read, A2D config){
 }
 
 bool scanForColour(Skittle read){
+		while(nMotorEncoder[motorC] <= 50;
 		motor[motorC] = 0;
 		wait1Msec(200);
 		if(SensorValue[S3] != 6){
@@ -274,9 +280,9 @@ void homeMotorC(){
 task main()
 {
 	A2D holdConfig;
-	SensorType[S1] = sensorTouch; // declare each sensor
-	SensorType[S2] = sensorTouch;
-	SensorType[S3] = sensorColorNxtFULL;
+	SensorType[S1] = sensorTouch; // homing sensor for motor C
+	SensorType[S2] = sensorTouch; // homing sensor for motor B
+	SensorType[S3] = sensorColorNxtFULL; // colour sensor
 	homeMotorB();		// home each motor before doing anything ese
 	homeMotorC();
 	reset2DArray(holdConfig);
