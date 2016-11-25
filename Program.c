@@ -451,7 +451,7 @@ bool scanForColour(Skittle read){
 				count++;
 			}
 
-			if(count == 2){
+			if(count == 1){
 				startTask(moveMotorA);
 			}
 
