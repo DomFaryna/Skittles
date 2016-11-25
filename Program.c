@@ -28,19 +28,13 @@ bool scanForColour(Skittle read);
 void spitSkittle(SkittleColour colour);
 //void spitSkittle(Skittle read, A2D config);
 void moveAndScan(Skittle colour, bool sort, A2D config);
+void moveMotorPID(int toDist, int motorNum);
 
 task doit(){	// seperate thread used to home the slide motor to save time.
 	wait1Msec(200); // need the delay to start thread. No idea why, but it works.
 	homeMotorB();
 }
 
-task showEncoder(){
-	wait1Msec(200);
-	while(1){
-		displayString(5, "%f", nMotorEncoder[motorC];
-		wait1Msec(100)
-	}
-}
 
 task moveMotorA(){
 	while(1){
@@ -65,7 +59,8 @@ void reset2DArray(A2D reset){  // reset the 2D array to be populted with zeros.
 
 void sortSkittle(A2D config, Skittle scan)
 {
-	SkittleColour check;
+	enum SkittleColour check;
+	check = UNDEFINED;
 	int match = 0; // Using an int to find a match
 	bool correct[5] = {false, false, false, false, false};
 	for(int i = 0; i < 5; i++)
@@ -80,6 +75,15 @@ void sortSkittle(A2D config, Skittle scan)
 		}
 	}
 
+	eraseDisplay();
+	displayString(0, "%i", correct[0]);
+	displayString(1, "%i", correct[1]);
+	displayString(2, "%i", correct[2]);
+	displayString(3, "%i", correct[3]);
+	displayString(4, "%i", correct[4]);
+	displayString(5, "%i", match);
+	wait10Msec(100);
+
 	if(match == 1)
 	{
 		if(correct[0]) check = RED;
@@ -91,16 +95,21 @@ void sortSkittle(A2D config, Skittle scan)
 
 	else if(match > 1)
 	{
-		match = 0;
-		if(correct[0]){ if(scan.normal < config.array[0][3] && scan.normal > config.array[0][7]) { check = RED;}}
-		else if(correct[1]){ if(scan.normal < config.array[1][3] && scan.normal > config.array[1][7]) {check = ORANGE;}}
-		else if(correct[2]){ if(scan.normal < config.array[2][3] && scan.normal > config.array[2][7]) {check = YELLOW;}}
-		else if(correct[3]){ if(scan.normal < config.array[3][3] && scan.normal > config.array[3][7]) {check = GREEN;}}
-		else if(correct[4]){ if(scan.normal < config.array[4][3] && scan.normal > config.array[4][7]) {check = PURPLE;}}
-		else {check = UNDEFINED;}
-	}
-	else{
-		check = UNDEFINED;
+		int matches[5] = {0, 0, 0, 0, 0};
+		for(int i = 0; i < 5; i++){
+			if(correct[i])
+				{
+					if(scan.R <= config.array[i][0] && scan.R >= config.array[i][4]){ matches[i]++;}
+					if(scan.G <= config.array[i][1] && scan.G >= config.array[i][5]){ matches[i]++;}
+					if(scan.B <= config.array[i][2] && scan.B >= config.array[i][6]){ matches[i]++;}
+					//if(scan.sum <= config.array[i][3] && scan.sum >= config.array[i][7]){ matches[i]++;}
+					if(matches[i] <=2)
+					{
+						check = (i == 0)?RED:(i == 1)?ORANGE:(i == 2)?YELLOW:(i == 3)?GREEN:PURPLE;
+						i = 5;
+					}
+			}
+		}
 	}
 
 	spitSkittle(check);
@@ -111,40 +120,50 @@ void config(){
 
 
 	Skittle returnSkittle;
+	returnSkittle.R = 0;
+	returnSkittle.G = 0;
+	returnSkittle.B = 0;
+	returnSkittle.normal = 0;
 	A2D config;
 	TFileHandle fout;
+	homeMotorC();
+
 	bool fileOkay = openWritePC(fout, "CONFIG.txt", 1000); // opening the file, so that the full config can go through, thus never having a blank config
 	for(int k = 0; k < 5; k++){
 		int maxR = 0, maxG = 0, maxB = 0, maxSum = 0, minR = 0, minG = 0, minB = 0, minSum = 0, maxNormal = 0; // values to be put into the config file.
 		int normals[5] = {0, 0, 0, 0, 0}; // int for each possible colour
-
+		//moveAndScan(returnSkittle, false, config);
 		for(int i = 0; i < 5; i++){ // test a skittle colour and record its RGB values.
+			returnSkittle.sum = 0;
 			homeMotorC();
 			moveAndScan(returnSkittle, false, config);
-			if(maxR < returnSkittle.R) maxR = returnSkittle.R;
-			if(maxG < returnSkittle.G) maxG = returnSkittle.G;
-			if(maxB < returnSkittle.B) maxB = returnSkittle.B;
-			if(maxSum < returnSkittle.sum) maxSum = returnSkittle.sum;
+			if(returnSkittle.sum != 0)
+			{
+				if(maxR < returnSkittle.R) maxR = returnSkittle.R;
+				if(maxG < returnSkittle.G) maxG = returnSkittle.G;
+				if(maxB < returnSkittle.B) maxB = returnSkittle.B;
+				if(maxSum < returnSkittle.sum) maxSum = returnSkittle.sum;
 
-			if(minR == 0) minR = maxR;
-			if(minG == 0) minG = maxG;
-			if(minB == 0) minB = maxB;
-			if(minSum == 0) minSum = maxSum;
+				if(minR == 0) minR = maxR;
+				if(minG == 0) minG = maxG;
+				if(minB == 0) minB = maxB;
+				if(minSum == 0) minSum = maxSum;
 
-			if(minR > returnSkittle.R) minR = returnSkittle.R;
-			if(minG > returnSkittle.G) minG = returnSkittle.G;
-			if(minB > returnSkittle.B) minB = returnSkittle.B;
-			if(minSum > returnSkittle.sum) minSum = returnSkittle.sum;
+				if(minR > returnSkittle.R) minR = returnSkittle.R;
+				if(minG > returnSkittle.G) minG = returnSkittle.G;
+				if(minB > returnSkittle.B) minB = returnSkittle.B;
+				if(minSum > returnSkittle.sum) minSum = returnSkittle.sum;
 
-			// This part checks to see if the default colour has been recorded already. If so, add it to the list. Otherwise, get rid of it.
-			for(int j = 0; j < 5; j++){
-				if(normals[j] == returnSkittle.normal){
-					j = 5;
-				}
-				else if(normals[j] == 0){
-					normals[j] = returnSkittle.normal;
-					maxNormal++;
-					j = 5;
+				// This part checks to see if the default colour has been recorded already. If so, add it to the list. Otherwise, get rid of it.
+				for(int j = 0; j < 5; j++){
+					if(normals[j] == returnSkittle.normal){
+						j = 5;
+					}
+					else if(normals[j] == 0){
+						normals[j] = returnSkittle.normal;
+						maxNormal++;
+						j = 5;
+					}
 				}
 			}
 		}
@@ -188,6 +207,7 @@ void loadConfig(A2D loadTo) // load data from the config file and add it to the 
 	{
 		for(int j = 0; j < 8; j++){
 			readIntPC(fin, loadTo.array[i][j]);
+			loadTo.array[i][j] += (j < 4)?2:-2;
 		}
 
 		readIntPC(fin, normals);
@@ -200,6 +220,8 @@ void loadConfig(A2D loadTo) // load data from the config file and add it to the 
 	}
 
 	closeFilePC(fin);
+
+
 }
 
 void moveAndScan(Skittle colour, bool sort, A2D config){
@@ -207,14 +229,31 @@ void moveAndScan(Skittle colour, bool sort, A2D config){
 	nMotorEncoder[motorC] = 0;
 	motor[motorC] = motorSpeed;
 	time1[T1] = 0;
+	moveMotorPID(48, motorC);
+	if(scanForColour(colour))
+			{
+			 		if(sort)sortSkittle(config, colour);
+					eraseDisplay();
+					displayString(0, "%i", colour.R);
+					displayString(1, "%i", colour.G);
+					displayString(2, "%i", colour.B);
+					displayString(3, "%i", colour.normal);
+					displayString(4, "%i", colour.sum);
+					scanned = true;
+			}
+		moveMotorPID(43, motorC);
+		homeMotorC();
+
+
 	// keep on movig the skittle loader until the encoders have gotten far enough.
-	while(!done){
+	//while(!done){
+		/*
 
 		if(nMotorEncoder[motorC] > 90){
   		startTask(doit);
   		done = true;
  	 	}
-
+		/*
  	 	if(nMotorEncoder[motorC] >= 49 && !scanned){
  	 		if(once){
  	 			scanned = true;
@@ -226,6 +265,7 @@ void moveAndScan(Skittle colour, bool sort, A2D config){
  	 			motor[motorC] = motorSpeed;
  	 			once = true;
  	 		}
+
 
 			if(sensorValue[S3] != 6 && nMotorEncoder[motorC] < 70) { // double check colour to remove false positivies
 				if(scanForColour(colour))
@@ -245,7 +285,8 @@ void moveAndScan(Skittle colour, bool sort, A2D config){
 				scanned = true;
 			}
 		}
-	}
+		*/
+//	}
 
 
 }
@@ -255,27 +296,27 @@ void spitSkittle(SkittleColour colour){
 		if(colour == ORANGE){
 			eraseDisplay();
 			displayString(5, "ORANGE");
-			moveMotorB(90);
+			moveMotorPID(90, motorB);
 		}
 		else if(colour == RED){
 			eraseDisplay();
 			displayString(5, "RED");
-			moveMotorB(110);
+			moveMotorPID(110, motorB);
 		}
 		else if(colour == PURPLE){
 			eraseDisplay();
 			displayString(5, "PURPLE");
-			moveMotorB(5);
+			moveMotorPID(5, motorB);
 		}
 		else if(colour == YELLOW){
 			eraseDisplay();
 			displayString(0, "YELLOW");
-			moveMotorB(35);
+			moveMotorPID(35, motorB);
 	}
 	else if(colour == GREEN){
 			eraseDisplay();
 			displayString(5, "GREEN");
-			moveMotorB(60);
+			moveMotorPID(60, motorB);
 	}else
 	{
 		eraseDisplay();
@@ -320,9 +361,14 @@ void spitSkittle(Skittle read, A2D config){
 */
 
 bool scanForColour(Skittle read){
-		while(nMotorEncoder[motorC] <= 50;
+		//while(nMotorEncoder[motorC] <= 50;
 		motor[motorC] = 0;
 		wait1Msec(200);
+		bool done = false;
+		time1[T1] = 0;
+
+		while(!done)
+		{
 		if(SensorValue[S3] != 6){
 			SensorType[S3] = sensorColorNxtRED;
 			wait1Msec(500);
@@ -341,13 +387,11 @@ bool scanForColour(Skittle read){
 			read.sum = read.R + read.G + read.B;
 
 			return true;
+			}
+			else if(time1[T1] > 500) done = true;
 		}
-
-		else
-		{
 			motor[motorC] = motorSpeed;
 			return false;
-		}
 }
 
 void moveMotorB(int toDist){
@@ -362,29 +406,32 @@ float PIDcontroller(int error, int integral, int derivative, float Kp, float Ki,
 	return(Kp * error) + ( Ki * integral) + ( derivative* Kd);
 }
 
-void moveMotorBPID(int toDist){
-	nMotorEncoder[motorB] = 0;
-	float integralMotorB = 0;
-	int derivativeMotorB = 0;
-	int degMotorB = 0;
-	int prevErrorMotorB = 0;
-	int errorMotorB = 0;
-	float PIDmotorB = 0;
+void moveMotorPID(int toDist, int motorNum){
+	nMotorEncoder[motorNum] = 0;
+	float integralMotor = 0;
+	int derivativeMotor = 0;
+	int degMotor = 0;
+	int prevErrorMotor = 0;
+	int errorMotor = 0;
+	float PIDmotor = 0;
 	float currentTime = 0;
 	bool done = false;
+	time1[T1] = 0;
+	wait1Msec(20);
 
 	while(!done){
-		degMotorB = nMotorEncoder[motorB];
-		prevErrorMotorB = errorMotorB;
-		errorMotorB = toDist - degMotorB;
-		integralMotorB += (errorMotorB) * (currentTime/time1[T1]);
+		degMotor = nMotorEncoder[motorNum];
+		prevErrorMotor = errorMotor;
+		errorMotor = toDist - degMotor;
+		integralMotor += (errorMotor) * (currentTime/time1[T1]);
 		currentTime = time1[T1];
-		derivativeMotorB = errorMotorB - prevErrorMotorB;
-		PIDmotorB = PIDcontroller(errorMotorB, integralMotorB, derivativeMotorB, 5, 0.0001, 75);
-		motor[motorB] = PIDmotorB;
-		if(errorMotorB == 0 && derivativeMotorB == 0) done = true;
+		derivativeMotor = errorMotor - prevErrorMotor;
+		PIDmotor = PIDcontroller(errorMotor, integralMotor, derivativeMotor, 0.05, 0.0001, 75);
+		motor[motorNum] = PIDmotor;
+		if(errorMotor == 0 && derivativeMotor == 0) done = true;
 	}
-	motor[motorB] = 0;
+
+	motor[motorNum] = 0;
 }
 
 void homeMotorB(){
@@ -399,6 +446,8 @@ void homeMotorC(){
 	motor[motorC] = 0;
 }
 
+
+
 task main()
 {
 	A2D holdConfig;
@@ -408,24 +457,35 @@ task main()
 	homeMotorB();		// Motor B is skittle slide
 	homeMotorC();		// Motor C is the drop table
 	reset2DArray(holdConfig);
-	loadConfig(holdConfig);
-	Skittle test;
 
 	wait1Msec(1000);
 	startTask(moveMotorA);
 	//startTask(showEncoder);
 
-	//displayStatus();
-	//config();
-
-
-	while(1)
+	displayString(0, "Arrows config, Orange sort");
+	while(nNxtButtonPressed == -1);
+	if(nNxtButtonPressed == 3)
 	{
-		moveAndScan(test, true, holdConfig);
-		homeMotorC();
+		while(1)
+		{
+			loadConfig(holdConfig);
+			Skittle test;
+			moveAndScan(test, true, holdConfig);
+			startTask(doit);
+			homeMotorC();
+
+		}
+	}
+	else
+	{
+		config();
 	}
 
-//	moveMotorBPID(50);
+
+	/*
+	 */
+
+	//nMotorPIDSpeedCtrl[motorC] = mtrNoReg;
 
 	//sort(holdConfig);
 	//testMotorC();
