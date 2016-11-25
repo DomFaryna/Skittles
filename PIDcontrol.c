@@ -13,7 +13,9 @@ int errorCalc(int target, int degrees)
 //Performs calculation for the output value to be applied to motors
 float PIDcontroller(int error, int integral, int derivative)
 {
-	float output = (Kp * error) + ( Ki * integral) + ( derivative* Kd); ;
+
+	float output = (Kp * error) + ( Ki * integral) + ( derivative* Kd);
+
 	displayString(0, "%f", error);
 	displayString(1, "%f", integral);
 	displayString(2, "%f", derivative);
