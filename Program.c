@@ -303,7 +303,7 @@ void spitSkittle(SkittleColour colour, A1D countArray){// moves the skittle slid
 	{
 		eraseDisplay();
 		displayString(5, "I'm Confused");
-		moveMotorPID(100, motorB);
+		moveMotorPID(90, motorB);
 		countArray.array[5]++;
 	}
 }
